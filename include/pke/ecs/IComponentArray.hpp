@@ -2,7 +2,7 @@
 #include "entity.hpp"
 
 namespace pke {
-    namespace ecs
+    namespace pke { namespace ecs
     {
         /**
          * @brief The IComponentArray interface defines the basic operations that a component array must
@@ -23,5 +23,5 @@ namespace pke {
              */
             virtual bool hasEntityData(ecs::EntityID id) const = 0;
         };
-    } // namespace pke { namespace ecs
+    } // namespace pke::ecs
 }

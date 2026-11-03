@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace pke {
-    namespace ecs
+    namespace pke { namespace ecs
     {
         // Maximum number of entities that can have a specific component type (dense array capacity)
         constexpr std::size_t MAX_ENTITY_COMPONENTS = ecs::MAX_ENTITIES;
@@ -280,5 +280,5 @@ namespace pke {
             std::size_t size = 0;
         };
 
-    } // namespace pke { namespace ecs
+    } // namespace pke::ecs
 }

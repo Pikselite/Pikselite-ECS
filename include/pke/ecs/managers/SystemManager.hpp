@@ -29,7 +29,7 @@ namespace engine
          * @param deltaTime
          * @param componentManager
          */
-        void update(double deltaTime, engine::ComponentManager& componentManager);
+        void update(double deltaTime, ComponentManager& componentManager);
 
         /**
          * @brief Updates the systems that run at a fixed time step (runsAtFixedStep()).
@@ -38,7 +38,7 @@ namespace engine
          * @param fixedDeltaTime
          * @param componentManager
          */
-        void fixedUpdate(double fixedDeltaTime, engine::ComponentManager& componentManager);
+        void fixedUpdate(double fixedDeltaTime, ComponentManager& componentManager);
 
         /**
          * @brief Notifies systems that an entity's signature has changed, so they can update their

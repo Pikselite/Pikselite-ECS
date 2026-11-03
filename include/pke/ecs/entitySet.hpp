@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace pke {
-    namespace ecs
+    namespace pke { namespace ecs
     {
         /**
          * @brief Sorted, duplicate-free set of entity ids stored in one contiguous vector.
@@ -103,5 +103,5 @@ namespace pke {
         private:
             std::vector<EntityID> _ids;
         };
-    } // namespace pke { namespace ecs
+    } // namespace pke::ecs
 }

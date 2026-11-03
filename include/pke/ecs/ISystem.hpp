@@ -3,11 +3,12 @@
 #include "entity.hpp"
 #include "entitySet.hpp"
 
-#include <engine/managers/componentManager.hpp>
+
 
 namespace pke {
-    namespace ecs
+    namespace pke { namespace ecs
     {
+        class ComponentManager;
 
         /**
          * @brief The ISystem interface defines the basic structure and functionality that all systems
@@ -25,7 +26,7 @@ namespace pke {
              * @param deltaTime The time elapsed since the last update.
              * @param componentManager The component manager for accessing components.
              */
-            virtual void update(double deltaTime, engine::ComponentManager& componentManager) = 0;
+            virtual void update(double deltaTime, ComponentManager& componentManager) = 0;
 
             /**
              * @brief Initializes the system. This function is called once when the system is added to
@@ -70,5 +71,5 @@ namespace pke {
              */
             EntitySet entities;
         };
-    } // namespace ecs
+    } // namespace pke::ecs
 }

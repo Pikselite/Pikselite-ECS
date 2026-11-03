@@ -12,4 +12,4 @@ namespace pke { namespace ecs::components
 
         float vx, vy;
     };
-} // namespace pke { namespace ecs::components
+} // namespace pke::ecs::components

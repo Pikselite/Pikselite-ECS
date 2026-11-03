@@ -18,4 +18,4 @@ namespace pke { namespace ecs::components
         // Previous frame position, used to compute movement delta
         float prevX = 0.0f, prevY = 0.0f;
     };
-} // namespace pke { namespace ecs::components
+} // namespace pke::ecs::components

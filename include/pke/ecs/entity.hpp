@@ -3,7 +3,7 @@
 
 namespace pke
 {
-    namespace ecs
+    namespace pke { namespace ecs
     {
         // An Entity is simply an ID. It can have multiple components associated with it, but it has no
         // data itself.
@@ -31,5 +31,5 @@ namespace pke
                 return id != other.id;
             }
         };
-    } // namespace pke { namespace ecs
+    } // namespace pke::ecs
 }
