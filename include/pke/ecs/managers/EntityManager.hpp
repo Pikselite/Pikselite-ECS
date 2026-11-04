@@ -1,83 +1,41 @@
 #pragma once
 
-#include "engine/ecs/entity.hpp"
-#include "engine/ecs/signature.hpp"
-
-#include <memory>
-#include <unordered_map>
+#include <pke/ecs/entity.hpp>
+#include <pke/ecs/signature.hpp>
+#include <array>
+#include <cassert>
+#include <deque>
 #include <vector>
 
-namespace engine
+namespace pke
 {
-    /**
-     * @brief The EntityManager class is responsible for creating, destroying, and managing entities
-     * in the ECS architecture. It maintains a list of active entities, a pool of available entity
-     * IDs for reuse, and a mapping of entity IDs to their component signatures.
-     */
-    class EntityManager
+    namespace ecs
     {
-      public:
-        EntityManager();
-        ~EntityManager();
+        class EntityManager
+        {
+        public:
+            EntityManager()
+            {
+                for (EntityID entity = 0; entity < MAX_ENTITIES; ++entity)
+                {
+                    mEntities[entity] = Entity(entity);
+                    mAvailableEntities.push_back(entity);
+                }
+                mSignaturesArr.assign(MAX_ENTITIES, Signature());
+            }
 
-        /**
-         * @brief Creates a new entity and returns its handle.
-         *
-         * Entity IDs are reused from the free-list when possible.
-         */
-        ecs::Entity createEntity();
+            EntityID createEntity();
+            void destroyEntity(EntityID entity);
+            void setSignature(EntityID entity, Signature signature);
+            Signature getSignature(EntityID entity);
+            bool hasEntity(EntityID entity);
+            std::vector<Entity*> getEntities();
 
-        /**
-         * @brief Destroys a given entity, making its ID available for reuse and removing its
-         * signature.
-         *
-         * @param entity
-         */
-        void destroyEntity(ecs::Entity entity);
-
-        /**
-         * @brief Checks if a given entity exists.
-         *
-         * @param entity
-         * @return true
-         * @return false
-         */
-        bool hasEntity(ecs::EntityID entity) const;
-
-        /**
-         * @brief Gets a const reference to the list of active entities.
-         *
-         * @return const std::vector<std::unique_ptr<ecs::Entity>>&
-         */
-        const std::vector<std::unique_ptr<ecs::Entity>>& getEntities() const;
-
-        /**
-         * @brief Sets the component signature for a given entity ID.
-         *
-         * @param entity
-         * @param signature
-         */
-        void setSignature(ecs::EntityID entity, const ecs::Signature& signature);
-
-        /**
-         * @brief Gets the component signature for a given entity ID.
-         *
-         * @param entity
-         * @return ecs::Signature
-         */
-        ecs::Signature getSignature(ecs::EntityID entity);
-
-      private:
-        // List of active entities
-        std::vector<std::unique_ptr<ecs::Entity>> entities;
-
-        // Pool of available entity IDs for reuse
-        std::vector<ecs::EntityID> availableIds;
-
-        // Mapping of entity ID to its component signature
-        std::unordered_map<ecs::EntityID, ecs::Signature> signatures;
-
-        // Incremental entity ID generator
-        ecs::EntityID nextId = 1;
-    };
-} // namespace engine
+        private:
+            std::deque<EntityID> mAvailableEntities;
+            std::array<Entity, MAX_ENTITIES> mEntities;
+            std::vector<Signature> mSignaturesArr;
+            uint32_t mLivingEntityCount = 0;
+        };
+    }
+}
