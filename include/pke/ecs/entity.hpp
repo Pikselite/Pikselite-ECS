@@ -3,7 +3,7 @@
 
 namespace pke
 {
-    namespace pke { namespace ecs
+    namespace ecs
     {
         // An Entity is simply an ID. It can have multiple components associated with it, but it has no
         // data itself.
