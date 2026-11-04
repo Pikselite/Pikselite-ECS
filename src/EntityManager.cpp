@@ -1,65 +1,72 @@
-#include "engine/managers/entityManager.hpp"
-
-#include "engine/ecs/entity.hpp"
+#include <pke/ecs/managers/EntityManager.hpp>
 
 #include <algorithm>
 
-// ...existing code...
-namespace engine
+namespace pke
 {
-    EntityManager::EntityManager() = default;
-
-    EntityManager::~EntityManager() = default;
-
-    ecs::Entity EntityManager::createEntity()
+    namespace ecs
     {
-        ecs::EntityID id;
-        if (!availableIds.empty())
+        EntityID EntityManager::createEntity()
         {
-            id = availableIds.back();
-            availableIds.pop_back();
+            EntityID id;
+
+            if (mLivingEntityCount < MAX_ENTITIES)
+            {
+                id = mAvailableEntities.front();
+                mAvailableEntities.pop_front();
+                ++mLivingEntityCount;
+            }
+            else
+            {
+                id = mLivingEntityCount;
+                ++mLivingEntityCount;
+            }
+
+            if (id < mSignaturesArr.size()) mSignaturesArr[id].reset();
+            return id;
         }
-        else
+
+        void EntityManager::destroyEntity(EntityID entity)
         {
-            id = nextId++;
-        }
-        auto entity = std::make_unique<ecs::Entity>(id);
-        entities.push_back(std::move(entity));
-        signatures[id] = ecs::Signature{};
-        return ecs::Entity(id);
-    }
+            assert(entity < MAX_ENTITIES && "Entity out of range.");
 
-    void EntityManager::destroyEntity(ecs::Entity entity)
-    {
-        auto it = std::remove_if(entities.begin(), entities.end(),
-                                 [entity](const std::unique_ptr<ecs::Entity>& e)
-                                 { return e->id == entity.id; });
-        if (it != entities.end())
+            if (entity < mSignaturesArr.size()) mSignaturesArr[entity].reset();
+
+            mAvailableEntities.push_back(entity);
+            --mLivingEntityCount;
+        }
+
+        void EntityManager::setSignature(EntityID entity, Signature signature)
         {
-            entities.erase(it, entities.end());
-            availableIds.push_back(entity.id);
-            signatures.erase(entity.id);
+            assert(entity < MAX_ENTITIES && "Entity out of range.");
+
+            if (entity < mSignaturesArr.size()) mSignaturesArr[entity] = signature;
+        }
+
+        Signature EntityManager::getSignature(EntityID entity)
+        {
+            assert(entity < MAX_ENTITIES && "Entity out of range.");
+
+            if (entity < mSignaturesArr.size()) return mSignaturesArr[entity];
+            return Signature();
+        }
+
+        bool EntityManager::hasEntity(EntityID entity)
+        {
+            if (entity >= MAX_ENTITIES || entity >= mSignaturesArr.size())
+                return false;
+            return mSignaturesArr[entity].any();
+        }
+
+        std::vector<Entity*> EntityManager::getEntities()
+        {
+            std::vector<Entity*> entities;
+            for (EntityID i = 0; i < MAX_ENTITIES; ++i)
+            {
+                if (i < mSignaturesArr.size() && mSignaturesArr[i].any())
+                    entities.push_back(&mEntities[i]);
+            }
+            return entities;
         }
     }
-
-    bool EntityManager::hasEntity(ecs::EntityID entity) const
-    {
-        return signatures.find(entity) != signatures.end();
-    }
-
-    const std::vector<std::unique_ptr<ecs::Entity>>& EntityManager::getEntities() const
-    {
-        return entities;
-    }
-
-    void EntityManager::setSignature(ecs::EntityID entity, const ecs::Signature& signature)
-    {
-        signatures[entity] = signature;
-    }
-
-    ecs::Signature EntityManager::getSignature(ecs::EntityID entity)
-    {
-        return signatures.at(entity);
-    }
-
-} // namespace engine
+}
