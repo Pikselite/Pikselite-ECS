@@ -1,15 +1,18 @@
 #pragma once
 
-namespace pke { namespace ecs::components
+namespace pke
 {
-    /**
-     * @brief The Velocity component represents the speed and direction of an entity's movement in
-     * 2D space. It contains properties for the x and y velocity components.
-     */
-    struct Velocity
+    namespace ecs::components
     {
-        bool enabled = true;
+        /**
+         * @brief The Velocity component represents the speed and direction of an entity's movement in
+         * 2D space. It contains properties for the x and y velocity components.
+         */
+        struct Velocity
+        {
+            bool enabled = true;
 
-        float vx, vy;
-    };
-} // namespace pke::ecs::components
+            float vx, vy;
+        };
+    } // namespace pke::ecs::components
+}
