@@ -1,8 +1,9 @@
 #pragma once
 #include "entity.hpp"
 
-namespace pke {
-    namespace pke { namespace ecs
+namespace pke
+{
+    namespace ecs
     {
         /**
          * @brief The IComponentArray interface defines the basic operations that a component array must
