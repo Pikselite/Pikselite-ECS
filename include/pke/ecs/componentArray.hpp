@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IComponentArray.hpp"
-#include "engine/log.hpp"
+#include "log.hpp"
 #include "entity.hpp"
 
 #include <cstdint>
@@ -10,8 +10,9 @@
 #include <utility>
 #include <vector>
 
-namespace pke {
-    namespace pke { namespace ecs
+namespace pke
+{
+    namespace ecs
     {
         // Maximum number of entities that can have a specific component type (dense array capacity)
         constexpr std::size_t MAX_ENTITY_COMPONENTS = ecs::MAX_ENTITIES;
@@ -103,7 +104,7 @@ namespace pke {
              *
              * @param id
              */
-            void removeData(ecs::EntityID id)
+            void removeData(pke::ecs::EntityID id)
             {
                 const std::uint32_t indexOfRemoved = indexOf(id);
                 if (indexOfRemoved == INVALID_COMPONENT_INDEX)
@@ -135,7 +136,7 @@ namespace pke {
              * @param id
              * @return T&
              */
-            T& getData(ecs::EntityID id)
+            T& getData(pke::ecs::EntityID id)
             {
                 const std::uint32_t index = indexOf(id);
                 if (index == INVALID_COMPONENT_INDEX)
@@ -154,7 +155,7 @@ namespace pke {
              * @param id Entity to look up.
              * @return Pointer to the component, or `nullptr`.
              */
-            T* tryGetData(ecs::EntityID id)
+            T* tryGetData(pke::ecs::EntityID id)
             {
                 const std::uint32_t index = indexOf(id);
                 return (index == INVALID_COMPONENT_INDEX) ? nullptr : &components[index];
@@ -167,7 +168,7 @@ namespace pke {
              * @return true
              * @return false
              */
-            bool has(ecs::EntityID id) const
+            bool has(pke::ecs::EntityID id) const
             {
                 return indexOf(id) != INVALID_COMPONENT_INDEX;
             }
@@ -178,7 +179,7 @@ namespace pke {
              * @param id
              * @return true if entity has this component
              */
-            bool hasEntityData(ecs::EntityID id) const override
+            bool hasEntityData(pke::ecs::EntityID id) const override
             {
                 return has(id);
             }
@@ -189,7 +190,7 @@ namespace pke {
              *
              * @param id
              */
-            void entityDestroyed(ecs::EntityID id) override
+            void entityDestroyed(pke::ecs::EntityID id) override
             {
                 removeData(id);
             }
@@ -233,7 +234,7 @@ namespace pke {
              * @param denseIndex Slot in range [0, count()).
              * @return Owning entity id.
              */
-            ecs::EntityID entityAt(std::size_t denseIndex) const
+            pke::ecs::EntityID entityAt(std::size_t denseIndex) const
             {
                 return indexToEntity[denseIndex];
             }
@@ -262,7 +263,7 @@ namespace pke {
              * @param id Entity to resolve.
              * @return Dense slot, or INVALID_COMPONENT_INDEX when the entity has no component here.
              */
-            std::uint32_t indexOf(ecs::EntityID id) const
+            std::uint32_t indexOf(pke::ecs::EntityID id) const
             {
                 return (id < entityToIndex.size()) ? entityToIndex[id] : INVALID_COMPONENT_INDEX;
             }
