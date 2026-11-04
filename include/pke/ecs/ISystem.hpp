@@ -5,8 +5,9 @@
 
 
 
-namespace pke {
-    namespace pke { namespace ecs
+namespace pke
+{
+    namespace ecs
     {
         class ComponentManager;
 
@@ -57,7 +58,7 @@ namespace pke {
              * @brief Notifies the system that an entity has been destroyed.
              * Default implementation is a no-op for systems that do not own entity-local resources.
              */
-            virtual void entityDestroyed(EntityID /*entity*/) {}
+            virtual void entityDestroyed(pke::ecs::EntityID /*entity*/) {}
 
             /**
              * @brief Cleans up the system's state. Called when the system is being shut down or scene
@@ -69,7 +70,7 @@ namespace pke {
              * @brief Entities this system is interested in, sorted by id.
              * Contiguous storage: do not add/remove entities while iterating it (see EntitySet).
              */
-            EntitySet entities;
+            pke::ecs::EntitySet entities;
         };
     } // namespace pke::ecs
 }
