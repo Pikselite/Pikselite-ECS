@@ -1,10 +1,9 @@
 #pragma once
 
-#include "engine/ecs/IComponentArray.hpp"
-#include "engine/ecs/componentArray.hpp"
-#include "engine/ecs/componentTypeId.hpp"
-#include "engine/ecs/signature.hpp"
-#include "engine/log.hpp"
+#include <pke/ecs/IComponentArray.hpp>
+#include <pke/ecs/componentArray.hpp>
+#include <pke/ecs/componentTypeId.hpp>
+#include <pke/ecs/signature.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -14,306 +13,158 @@
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
+#include <iostream>
+#include <cassert>
 
 namespace pke {
-    namespace engine
+    namespace ecs
     {
         using ComponentType = std::uint8_t;
-        // Reuse the ECS-level limit to avoid divergence with Signature bit width.
-        constexpr std::size_t MAX_COMPONENT_TYPES = ecs::MAX_COMPONENT_TYPES;
 
-        /**
-         * @brief The ComponentManager class is responsible for managing the storage and access of
-         * components in the ECS architecture.
-         *
-         * Component storage is reached through `ecs::detail::componentTypeId<T>()`, a dense index
-         * assigned once per type, so resolving `T` to its array is an array index rather than a
-         * hash of `typeid(T)`. Combined with the direct-indexed lookup inside ComponentArray, a
-         * `getComponent<T>(entity)` call performs no hashing at all.
-         */
         class ComponentManager
         {
         public:
             ComponentManager() = default;
             ~ComponentManager() = default;
 
-            /**
-             * @brief Sets the callback invoked when an entity component set changes.
-             *
-             * The callback is called after add/remove operations so the caller can
-             * refresh signatures and system memberships.
-             */
-            void setEntityMutationCallback(std::function<void(ecs::EntityID)> callback)
+            template<typename T>
+            void registerComponent()
             {
-                onEntityMutated = std::move(callback);
-            }
+                const char* typeName = typeid(T).name();
 
-            /**
-             * @brief Sets the callback invoked when a component type is removed from an entity.
-             */
-            void setComponentRemovalCallback(
-                std::function<void(ecs::EntityID, const std::type_index&)> callback)
-            {
-                onComponentRemoved = std::move(callback);
-            }
+                assert(mComponentTypes.find(typeName) == mComponentTypes.end() && "Registering component type more than once.");
 
-            /**
-             * @brief Registers a component type with the manager.
-             *
-             * @tparam T
-             */
-            template <typename T> void registerComponent()
-            {
-                const std::size_t globalId = ecs::detail::componentTypeId<T>();
+                ComponentType id = mNextComponentType++;
+                mComponentTypes.insert({typeName, id});
+                mComponentArrays.insert({typeName, std::make_shared<ComponentArray<T>>()});
 
-                if (globalId < slotsByGlobalId.size() && slotsByGlobalId[globalId].array != nullptr)
+                if (mNextComponentType > MAX_COMPONENT_TYPES)
                 {
-                    engine::Log::warning(std::string("Registering component type more than once: ") +
-                                        typeid(T).name());
-                    return;
+                    std::cerr << "MAX_COMPONENT_TYPES exceeded\n";
                 }
-
-                checkComponentCapacity();
-
-                if (globalId >= slotsByGlobalId.size())
-                {
-                    slotsByGlobalId.resize(globalId + 1);
-                }
-
-                auto array = std::make_unique<ecs::ComponentArray<T>>();
-                slotsByGlobalId[globalId].array = array.get();
-                slotsByGlobalId[globalId].type = static_cast<ComponentType>(componentArrays.size());
-                componentArrays.push_back(std::move(array));
             }
 
-            /**
-             * @brief Gets the type of a component.
-             *
-             * @tparam T
-             * @return ComponentType
-             */
-            template <typename T> ComponentType getComponentType()
+            template<typename T>
+            ComponentType getComponentType()
             {
-                const std::size_t globalId = ecs::detail::componentTypeId<T>();
-                if (globalId < slotsByGlobalId.size() && slotsByGlobalId[globalId].array != nullptr)
-                {
-                    return slotsByGlobalId[globalId].type;
-                }
+                const char* typeName = typeid(T).name();
 
-                engine::Log::error(std::string("Component not registered before use: ") +
-                                typeid(T).name());
-                throw std::runtime_error("Component not registered before use");
+                assert(mComponentTypes.find(typeName) != mComponentTypes.end() && "Component not registered before use.");
+
+                return mComponentTypes[typeName];
             }
 
-            /**
-             * @brief Adds a component to an entity.
-             *
-             * @tparam T
-             * @param entity
-             * @param component
-             */
-            template <typename T> void addComponent(ecs::EntityID entity, const T& component)
+            template<typename T>
+            void addComponent(EntityID entity, T component)
             {
                 getComponentArray<T>()->insertData(entity, component);
-                notifyEntityMutated(entity);
+                if (mEntityMutationCallback)
+                    mEntityMutationCallback(entity);
             }
 
-            /**
-             * @brief Removes a component from an entity.
-             *
-             * @tparam T
-             * @param entity
-             */
-            template <typename T> void removeComponent(ecs::EntityID entity)
+            template<typename T>
+            void removeComponent(EntityID entity)
             {
                 getComponentArray<T>()->removeData(entity);
-                notifyComponentRemoved(entity, std::type_index(typeid(T)));
-                notifyEntityMutated(entity);
+                if (mComponentRemovalCallback)
+                    mComponentRemovalCallback(entity, std::type_index(typeid(T)));
+                if (mEntityMutationCallback)
+                    mEntityMutationCallback(entity);
             }
 
-            /**
-             * @brief Gets a reference to a component of an entity.
-             *
-             * @tparam T
-             * @param entity
-             * @return T&
-             */
-            template <typename T> T& getComponent(ecs::EntityID entity)
+            template<typename T>
+            T& getComponent(EntityID entity)
             {
                 return getComponentArray<T>()->getData(entity);
             }
 
-            /**
-             * @brief Returns a pointer to a component, or nullptr when the entity has none.
-             *
-             * Prefer this over `hasComponent<T>(e)` followed by `getComponent<T>(e)`: it resolves
-             * the storage and the entity slot once instead of twice, and it never throws — an
-             * unregistered component type simply yields `nullptr`.
-             *
-             * @tparam T Component type.
-             * @param entity Entity to look up.
-             * @return Pointer to the component, or `nullptr`.
-             */
-            template <typename T> T* tryGetComponent(ecs::EntityID entity)
+            template<typename T>
+            const T& getComponent(EntityID entity) const
             {
-                const std::size_t globalId = ecs::detail::componentTypeId<T>();
-                if (globalId >= slotsByGlobalId.size())
-                {
-                    return nullptr;
-                }
-
-                ecs::IComponentArray* array = slotsByGlobalId[globalId].array;
-                if (array == nullptr)
-                {
-                    return nullptr;
-                }
-
-                return static_cast<ecs::ComponentArray<T>*>(array)->tryGetData(entity);
+                return getComponentArray<T>()->getData(entity);
             }
 
-            /**
-             * @brief Checks if an entity has a component of a specific type.
-             *
-             * @tparam T
-             * @param entity
-             * @return true
-             * @return false
-             */
-            template <typename T> bool hasComponent(ecs::EntityID entity)
+            template<typename T>
+            T* tryGetComponent(EntityID entity)
             {
-                return getComponentArray<T>()->has(entity);
+                auto array = getComponentArray<T>();
+                if (!array) return nullptr;
+                return array->tryGetData(entity);
             }
 
-            /**
-             * @brief Returns the dense storage for a component type, for contiguous iteration.
-             *
-             * Lets a system walk every component of a type without a per-entity lookup:
-             * @code
-             * if (auto* velocities = componentManager.componentArray<Velocity>())
-             *     velocities->forEach([](ecs::EntityID id, Velocity& v) { ... });
-             * @endcode
-             *
-             * @tparam T Component type.
-             * @return Pointer to the storage, or `nullptr` when `T` is not registered here.
-             */
-            template <typename T> ecs::ComponentArray<T>* componentArray()
+            template<typename T>
+            const T* tryGetComponent(EntityID entity) const
             {
-                const std::size_t globalId = ecs::detail::componentTypeId<T>();
-                if (globalId >= slotsByGlobalId.size())
-                {
-                    return nullptr;
-                }
-                return static_cast<ecs::ComponentArray<T>*>(slotsByGlobalId[globalId].array);
+                auto array = getComponentArray<T>();
+                if (!array) return nullptr;
+                return array->tryGetData(entity);
             }
 
-            /**
-             * @brief Notifies the component manager that an entity has been destroyed, so it can remove
-             * any associated components.
-             *
-             * @param entity
-             */
-            void entityDestroyed(ecs::EntityID entity)
+            void entityDestroyed(EntityID entity)
             {
-                for (auto& array : componentArrays)
+                for (auto const& pair : mComponentArrays)
                 {
-                    array->entityDestroyed(entity);
+                    auto const& component = pair.second;
+                    component->entityDestroyed(entity);
                 }
             }
 
-            /**
-             * @brief Builds the signature for an entity by checking all registered component types.
-             * This automatically discovers which components the entity has.
-             *
-             * @param entityId
-             * @return ecs::Signature
-             */
-            ecs::Signature getEntitySignature(ecs::EntityID entityId) const
+            Signature getEntitySignature(EntityID entity) const
             {
-                ecs::Signature sig{};
-                // Storage index and ComponentType are the same value by construction, so the
-                // slot index is the signature bit.
-                for (std::size_t i = 0; i < componentArrays.size(); ++i)
+                Signature sig = {};
+                for (auto const& pair : mComponentTypes)
                 {
-                    if (componentArrays[i] && componentArrays[i]->hasEntityData(entityId))
+                    const char* typeName = pair.first;
+                    ComponentType typeId = pair.second;
+                    auto arrIt = mComponentArrays.find(typeName);
+                    if (arrIt == mComponentArrays.end())
+                        continue;
+                    if (arrIt->second && arrIt->second->hasEntityData(entity))
                     {
-                        sig.set(i);
+                        sig.set(typeId);
                     }
                 }
                 return sig;
             }
 
+            void setEntityMutationCallback(std::function<void(EntityID)> cb)
+            {
+                mEntityMutationCallback = std::move(cb);
+            }
+
+            void setComponentRemovalCallback(std::function<void(EntityID, const std::type_index&)> cb)
+            {
+                mComponentRemovalCallback = std::move(cb);
+            }
+
         private:
-            // Per-manager view of one component type: where its storage lives and which
-            // signature bit it owns. Indexed by ecs::detail::componentTypeId<T>().
-            struct TypeSlot
+            template<typename T>
+            std::shared_ptr<ComponentArray<T>> getComponentArray()
             {
-                // Non-owning; the unique_ptr in componentArrays owns the storage.
-                ecs::IComponentArray* array = nullptr;
-                ComponentType type = 0;
-            };
+                const char* typeName = typeid(T).name();
 
-            // Maps the process-wide component type index onto this manager's storage.
-            // Sparse: a manager only fills the indices it registered itself.
-            std::vector<TypeSlot> slotsByGlobalId;
+                assert(mComponentTypes.find(typeName) != mComponentTypes.end() && "Component not registered before use.");
 
-            // Owns the component arrays. The position in this vector is the ComponentType
-            // and therefore the signature bit index.
-            std::vector<std::unique_ptr<ecs::IComponentArray>> componentArrays;
-
-            // Optional callback used by Core to recompute entity signature on mutation.
-            std::function<void(ecs::EntityID)> onEntityMutated;
-
-            // Optional callback used by Core to react to specific component removals.
-            std::function<void(ecs::EntityID, const std::type_index&)> onComponentRemoved;
-
-            // Guard: prevent registration overflow
-            void checkComponentCapacity() const
-            {
-                if (componentArrays.size() >= MAX_COMPONENT_TYPES)
-                {
-                    engine::Log::error("Maximum number of component types exceeded");
-                    throw std::runtime_error("Maximum number of component types exceeded");
-                }
+                return std::static_pointer_cast<ComponentArray<T>>(mComponentArrays[typeName]);
             }
 
-            void notifyEntityMutated(ecs::EntityID entity)
+            template<typename T>
+            std::shared_ptr<ComponentArray<T>> getComponentArray() const
             {
-                if (onEntityMutated)
-                {
-                    onEntityMutated(entity);
-                }
+                const char* typeName = typeid(T).name();
+
+                auto itType = mComponentTypes.find(typeName);
+                if (itType == mComponentTypes.end()) return nullptr;
+                auto itArr = mComponentArrays.find(typeName);
+                if (itArr == mComponentArrays.end()) return nullptr;
+                return std::static_pointer_cast<ComponentArray<T>>(itArr->second);
             }
 
-            void notifyComponentRemoved(ecs::EntityID entity, const std::type_index& componentType)
-            {
-                if (onComponentRemoved)
-                {
-                    onComponentRemoved(entity, componentType);
-                }
-            }
-
-            /**
-             * @brief Gets the component array for a specific component type.
-             *
-             * @tparam T
-             * @return ecs::ComponentArray<T>*
-             */
-            template <typename T> ecs::ComponentArray<T>* getComponentArray()
-            {
-                const std::size_t globalId = ecs::detail::componentTypeId<T>();
-                if (globalId < slotsByGlobalId.size())
-                {
-                    ecs::IComponentArray* array = slotsByGlobalId[globalId].array;
-                    if (array != nullptr)
-                    {
-                        return static_cast<ecs::ComponentArray<T>*>(array);
-                    }
-                }
-
-                engine::Log::error(std::string("Component not registered before use: ") +
-                                typeid(T).name());
-                throw std::runtime_error("Component not registered before use");
-            }
+            std::unordered_map<const char*, ComponentType> mComponentTypes{};
+            std::unordered_map<const char*, std::shared_ptr<IComponentArray>> mComponentArrays{};
+            ComponentType mNextComponentType{};
+            std::function<void(EntityID)> mEntityMutationCallback;
+            std::function<void(EntityID, const std::type_index&)> mComponentRemovalCallback;
         };
-    } // namespace engine
-}
+    } // namespace ecs
+} // namespace pke
