@@ -12,6 +12,7 @@
 #include <string>
 #include <typeindex>
 #include <typeinfo>
+#include <unordered_map>
 #include <vector>
 #include <iostream>
 #include <cassert>
@@ -98,6 +99,14 @@ namespace pke {
                 auto array = getComponentArray<T>();
                 if (!array) return nullptr;
                 return array->tryGetData(entity);
+            }
+
+            template<typename T>
+            bool hasComponent(EntityID entity) const
+            {
+                auto array = getComponentArray<T>();
+                if (!array) return false;
+                return array->has(entity);
             }
 
             void entityDestroyed(EntityID entity)
