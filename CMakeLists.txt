@@ -6,8 +6,9 @@ option(PKE_ECS_INSTALL "Install targets" ON)
 
 add_library(pke_ecs
   src/EntityManager.cpp
-  src/SystemManager.cpp
+  src/systemManager.cpp
 )
+add_library(pke::pke_ecs ALIAS pke_ecs)
 
 target_include_directories(pke_ecs
   PUBLIC
