@@ -24,12 +24,14 @@ namespace pke
                 mSignaturesArr.assign(MAX_ENTITIES, Signature());
             }
 
-            EntityID createEntity();
+            Entity createEntity();
             void destroyEntity(EntityID entity);
+            void destroyEntity(const Entity& entity) { destroyEntity(entity.id); }
             void setSignature(EntityID entity, Signature signature);
-            Signature getSignature(EntityID entity);
-            bool hasEntity(EntityID entity);
-            std::vector<Entity*> getEntities();
+            Signature getSignature(EntityID entity) const;
+            bool hasEntity(EntityID entity) const;
+            bool hasEntity(const Entity& entity) const { return hasEntity(entity.id); }
+            std::vector<Entity*> getEntities() const;
 
         private:
             std::deque<EntityID> mAvailableEntities;
