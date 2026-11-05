@@ -1,10 +1,11 @@
 #pragma once
 
-#include "IComponentArray.hpp"
-#include "log.hpp"
-#include "entity.hpp"
+#include <pke/ecs/IComponentArray.hpp>
+#include <pke/ecs/entity.hpp>
+#include <pke/ecs/signature.hpp>
 
 #include <cstdint>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -75,14 +76,12 @@ namespace pke
 
                 if (size >= MAX_ENTITY_COMPONENTS)
                 {
-                    engine::Log::error("ComponentArray full (insert for entity " + std::to_string(id) +
-                                    ")");
+                    std::cerr << "ComponentArray full (insert for entity " << id << ")\n";
                     throw std::runtime_error("ComponentArray full");
                 }
                 if (id > MAX_ENTITY_ID)
                 {
-                    engine::Log::error("Entity id out of range for component storage: " +
-                                    std::to_string(id));
+                    std::cerr << "Entity id out of range for component storage: " << id << "\n";
                     throw std::runtime_error("Entity id out of range for component storage");
                 }
 
@@ -141,7 +140,7 @@ namespace pke
                 const std::uint32_t index = indexOf(id);
                 if (index == INVALID_COMPONENT_INDEX)
                 {
-                    engine::Log::error("Component not found for entity " + std::to_string(id));
+                    std::cerr << "Component not found for entity " << id << "\n";
                     throw std::out_of_range("Component not found for entity");
                 }
                 return components[index];
